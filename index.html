@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Water Drop Catcher — charity: water</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sky: #0a1628;
+    --deep: #060e1c;
+    --clean: #4fc3f7;
+    --clean-glow: #81d4fa;
+    --dirty: #8d6e40;
+    --dirty-glow: #a1887f;
+    --gold: #ffd54f;
+    --text: #e0f4ff;
+    --muted: #5a8fa8;
+    --well: #1a3a5c;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--deep);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    user-select: none;
+  }
+
+  /* Stars */
+  #stars {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .star {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+    animation: twinkle var(--d) ease-in-out infinite alternate;
+    opacity: 0;
+  }
+  @keyframes twinkle {
+    from { opacity: 0.1; }
+    to { opacity: 0.8; }
+  }
+
+  /* Screens */
+  .screen {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.5s;
+  }
+  .screen.hidden { opacity: 0; pointer-events: none; }
+
+  /* Start Screen */
+  #start-screen {
+    background: radial-gradient(ellipse at 50% 40%, #0d2240 0%, var(--deep) 70%);
+  }
+  #start-screen .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    font-weight: 700;
+    letter-spacing: -1px;
+    text-align: center;
+    line-height: 1.1;
+    margin-bottom: 0.3rem;
+  }
+  #start-screen .logo span { color: var(--clean); }
+  #start-screen .tagline {
+    color: var(--muted);
+    font-weight: 300;
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 3rem;
+    text-align: center;
+  }
+  .big-drop {
+    font-size: 5rem;
+    animation: float 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px var(--clean));
+    margin-bottom: 2rem;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+  }
+  .stat-card {
+    background: rgba(79, 195, 247, 0.07);
+    border: 1px solid rgba(79, 195, 247, 0.2);
+    border-radius: 12px;
+    padding: 1rem 2rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--muted);
+    max-width: 320px;
+    margin-bottom: 2.5rem;
+    line-height: 1.6;
+  }
+  .stat-card strong { color: var(--clean); font-size: 1.2rem; }
+  .btn {
+    background: var(--clean);
+    color: #051020;
+    border: none;
+    padding: 0.9rem 3rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    border-radius: 50px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 0 30px rgba(79, 195, 247, 0.4);
+  }
+  .btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 45px rgba(79, 195, 247, 0.6);
+  }
+  .controls-hint {
+    margin-top: 1.5rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* HUD */
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 5;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: linear-gradient(to bottom, rgba(6,14,28,0.9), transparent);
+  }
+  #hud.hidden { display: none; }
+  .hud-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+  .hud-val {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: var(--text);
+    line-height: 1;
+  }
+  #well-progress-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  #well-bar-bg {
+    height: 8px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  #well-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--clean), var(--clean-glow));
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px var(--clean);
+  }
+  #lives-display { font-size: 1.4rem; letter-spacing: 2px; }
+
+  /* Game canvas area */
+  #game-area {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    cursor: none;
+  }
+  #game-area.hidden { display: none; }
+
+  /* Ground */
+  #ground {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 80px;
+    background: linear-gradient(to top, #0a1e38, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #ground-line {
+    position: absolute;
+    bottom: 72px; left: 5%; right: 5%;
+    height: 1px;
+    background: rgba(79,195,247,0.15);
+  }
+
+  /* Catcher (bucket) */
+  #catcher {
+    position: absolute;
+    bottom: 20px;
+    width: 70px;
+    height: 50px;
+    transform: translateX(-50%);
+    transition: left 0.05s linear;
+    filter: drop-shadow(0 0 12px rgba(79,195,247,0.5));
+  }
+
+  /* Drops */
+  .drop {
+    position: absolute;
+    font-size: 1.6rem;
+    transform: translateX(-50%);
+    pointer-events: none;
+    filter: drop-shadow(0 0 6px var(--clean));
+    transition: none;
+    will-change: transform, top;
+  }
+  .drop.dirty { filter: drop-shadow(0 0 6px var(--dirty-glow)); }
+
+  /* Fact popup */
+  #fact-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.85);
+    z-index: 20;
+    background: rgba(8, 20, 40, 0.95);
+    border: 1px solid rgba(79,195,247,0.3);
+    border-radius: 16px;
+    padding: 2rem 2.5rem;
+    max-width: 360px;
+    width: 90%;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+    backdrop-filter: blur(12px);
+  }
+  #fact-popup.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  #fact-icon { font-size: 2.5rem; margin-bottom: 0.8rem; }
+  #fact-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    color: var(--clean);
+    margin-bottom: 0.5rem;
+  }
+  #fact-text { font-size: 0.9rem; color: var(--muted); line-height: 1.6; margin-bottom: 1.5rem; }
+  #fact-progress {
+    font-size: 0.75rem;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+    margin-bottom: 1.2rem;
+  }
+  #fact-continue {
+    font-size: 0.8rem;
+    color: var(--muted);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+
+  /* Game Over / Win screens */
+  #end-screen { background: radial-gradient(ellipse at 50% 50%, #0d1e38 0%, var(--deep) 70%); }
+  #end-screen .end-icon { font-size: 4rem; margin-bottom: 1rem; }
+  #end-screen .end-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+  #end-screen .end-sub {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+  #end-score {
+    font-size: 1.1rem;
+    color: var(--clean);
+    margin-bottom: 2rem;
+  }
+  .btn-row { display: flex; gap: 1rem; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--clean);
+    border: 1px solid rgba(79,195,247,0.4);
+    padding: 0.8rem 2rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+  }
+  .btn-ghost:hover { background: rgba(79,195,247,0.1); transform: scale(1.03); }
+
+  /* Mobile tap zones */
+  #tap-zones {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 120px;
+    z-index: 4;
+    display: flex;
+    pointer-events: none;
+  }
+  #tap-zones.active { pointer-events: auto; }
+  .tap-zone {
+    position: absolute;
+    bottom: 0;
+    width: 48%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: rgba(79,195,247,0.25);
+    border-top: 1px solid rgba(79,195,247,0.1);
+    transition: background 0.1s, color 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tap-zone:active, .tap-zone.pressed {
+    background: rgba(79,195,247,0.08);
+    color: rgba(79,195,247,0.6);
+  }
+  #tap-left { left: 0; border-right: 1px solid rgba(79,195,247,0.1); }
+  #tap-right { right: 0; }
+
+  @media (max-width: 600px) {
+    #tap-zones { display: flex; }
+    #hud { flex-wrap: wrap; gap: 0.6rem; padding: 0.7rem 1rem; }
+    .hud-val { font-size: 1.1rem; }
+    #well-progress-wrap { order: 3; width: 100%; }
+    .drop { font-size: 2.2rem; }
+    #catcher { width: 90px; height: 65px; }
+    .controls-hint { display: none; }
+    #start-screen .logo { font-size: 2rem; }
+  }
+
+  /* Splash effect */
+  .splash {
+    position: absolute;
+    font-size: 1.2rem;
+    pointer-events: none;
+    animation: splash-anim 0.6s ease-out forwards;
+    transform: translateX(-50%);
+    z-index: 3;
+  }
+  @keyframes splash-anim {
+    0% { opacity: 1; transform: translateX(-50%) scale(1); }
+    100% { opacity: 0; transform: translateX(-50%) scale(2.5) translateY(-20px); }
+  }
+
+  /* Dirty hit flash */
+  #hit-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 8;
+    background: rgba(141, 110, 64, 0.3);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  #hit-overlay.flash { opacity: 1; }
+
+  /* Well fill milestone */
+  #milestone-banner {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    z-index: 9;
+    background: rgba(255, 213, 79, 0.12);
+    border: 1px solid rgba(255, 213, 79, 0.5);
+    border-radius: 50px;
+    padding: 0.5rem 1.5rem;
+    font-size: 0.85rem;
+    color: var(--gold);
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #milestone-banner.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<!-- Stars -->
+<div id="stars"></div>
+
+<!-- Hit overlay -->
+<div id="hit-overlay"></div>
+
+<!-- Milestone banner -->
+<div id="milestone-banner"></div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div>
+    <div class="hud-label">Drops</div>
+    <div class="hud-val" id="score-display">0</div>
+  </div>
+  <div id="well-progress-wrap">
+    <div class="hud-label">Well progress — <span id="well-pct">0</span>%</div>
+    <div id="well-bar-bg"><div id="well-bar"></div></div>
+  </div>
+  <div>
+    <div class="hud-label">Lives</div>
+    <div id="lives-display">💧💧💧</div>
+  </div>
+</div>
+
+<!-- Start Screen -->
+<div class="screen" id="start-screen">
+  <div class="big-drop">💧</div>
+  <div class="logo">Water Drop<br><span>Catcher</span></div>
+  <div class="tagline">a charity: water game</div>
+  <div class="stat-card">
+    <strong>785 million</strong> people lack access to clean water.<br>
+    Catch the clean drops. Fill the well. Change that.
+  </div>
+  <button class="btn" id="start-btn">Start Catching</button>
+  <p class="controls-hint">← → Arrow Keys or Mouse to move</p>
+</div>
+
+<!-- Game Area -->
+<div id="game-area" class="hidden">
+  <div id="ground">
+    <div id="ground-line"></div>
+  </div>
+  <!-- Mobile tap zones -->
+  <div id="tap-zones">
+    <div class="tap-zone" id="tap-left">◀</div>
+    <div class="tap-zone" id="tap-right">▶</div>
+  </div>
+  <!-- Catcher SVG -->
+  <div id="catcher">
+    <svg viewBox="0 0 70 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Bucket body -->
+      <path d="M10 10 L15 45 L55 45 L60 10 Z" fill="#1a3a5c" stroke="#4fc3f7" stroke-width="1.5"/>
+      <!-- Bucket rim -->
+      <rect x="8" y="8" width="54" height="6" rx="3" fill="#1e4570" stroke="#4fc3f7" stroke-width="1.5"/>
+      <!-- Water inside -->
+      <path d="M16 38 Q35 33 54 38 L55 45 L15 45 Z" fill="rgba(79,195,247,0.35)"/>
+      <!-- Charity water logo mark (Y shape) -->
+      <text x="35" y="30" text-anchor="middle" font-size="10" fill="#4fc3f7" font-family="sans-serif" font-weight="bold">cw</text>
+    </svg>
+  </div>
+</div>
+
+<!-- Fact Popup -->
+<div id="fact-popup">
+  <div id="fact-icon">💧</div>
+  <div id="fact-title"></div>
+  <div id="fact-text"></div>
+  <div id="fact-progress"></div>
+  <div id="fact-continue">tap or press space to continue</div>
+</div>
+
+<!-- End Screen -->
+<div class="screen hidden" id="end-screen">
+  <div class="end-icon" id="end-icon">💧</div>
+  <div class="end-title" id="end-title">Game Over</div>
+  <div class="end-sub" id="end-sub">The well isn't full yet.</div>
+  <div id="end-score"></div>
+  <div class="btn-row">
+    <button class="btn" id="replay-btn">Try Again</button>
+    <a class="btn-ghost" href="https://charitywater.org" target="_blank">Donate 💧</a>
+  </div>
+</div>
+
+<script>
+// ---- STARS ----
+(function() {
+  const el = document.getElementById('stars');
+  for (let i = 0; i < 120; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2 + 0.5;
+    s.style.cssText = `
+      width:${size}px; height:${size}px;
+      top:${Math.random()*100}%;
+      left:${Math.random()*100}%;
+      --d:${(Math.random()*3+1).toFixed(1)}s;
+      animation-delay:${(Math.random()*3).toFixed(1)}s;
+    `;
+    el.appendChild(s);
+  }
+})();
+
+// ---- FACTS ----
+const FACTS = [
+  {
+    icon: "🚶",
+    title: "The Long Walk",
+    text: "Women and girls spend 200 million hours every day collecting water — time that could be spent in school or building a future.",
+    milestone: 5
+  },
+  {
+    icon: "🌍",
+    title: "A Global Crisis",
+    text: "785 million people — 1 in 10 — still lack access to clean water close to home. That's more than 2× the US population.",
+    milestone: 10
+  },
+  {
+    icon: "👧",
+    title: "Girls & Education",
+    text: "When a village gets clean water, girls' school attendance increases by up to 15%. One well changes everything.",
+    milestone: 20
+  },
+  {
+    icon: "💰",
+    title: "Your Dollar",
+    text: "charity: water uses 100% of public donations for water projects. Every dollar goes directly to communities in need.",
+    milestone: 30
+  },
+  {
+    icon: "🏗️",
+    title: "Wells That Last",
+    text: "charity: water has funded 172,000+ water projects in 29 countries, bringing clean water to over 17 million people.",
+    milestone: 45
+  },
+  {
+    icon: "🦠",
+    title: "Dirty Water Kills",
+    text: "Contaminated water causes 485,000 deaths per year — more than war, conflict, and violence combined.",
+    milestone: 60
+  },
+  {
+    icon: "🌱",
+    title: "The Ripple Effect",
+    text: "Clean water leads to better health, more school, less poverty, and economic growth. It's the foundation of everything.",
+    milestone: 80
+  }
+];
+
+// ---- GAME STATE ----
+let state = {
+  running: false,
+  paused: false,
+  score: 0,
+  lives: 3,
+  wellPct: 0,
+  drops: [],
+  nextDropId: 0,
+  factIdx: 0,
+  lastTime: 0,
+  speed: 120,     // px/sec
+  spawnInterval: 1500, // ms
+  lastSpawn: 0,
+  catcherX: window.innerWidth / 2,
+  targetX: window.innerWidth / 2,
+  animId: null,
+  milestoneShown: new Set(),
+  cleanNeeded: 80  // drops needed to fill well
+};
+
+const DIRTY_CHANCE = 0.28;
+const CATCHER_WIDTH = 70;
+const DROP_RADIUS = 16;
+const LIVES_ICONS = ['💧','💧💧','💧💧💧'];
+
+// ---- DOM ----
+const startScreen = document.getElementById('start-screen');
+const endScreen = document.getElementById('end-screen');
+const gameArea = document.getElementById('game-area');
+const hud = document.getElementById('hud');
+const catcherEl = document.getElementById('catcher');
+const scoreDisplay = document.getElementById('score-display');
+const wellBar = document.getElementById('well-bar');
+const wellPctEl = document.getElementById('well-pct');
+const livesDisplay = document.getElementById('lives-display');
+const factPopup = document.getElementById('fact-popup');
+const hitOverlay = document.getElementById('hit-overlay');
+const milestoneBanner = document.getElementById('milestone-banner');
+
+// ---- START ----
+document.getElementById('start-btn').addEventListener('click', startGame);
+
+function startGame() {
+  startScreen.classList.add('hidden');
+  endScreen.classList.add('hidden');
+  gameArea.classList.remove('hidden');
+  hud.classList.remove('hidden');
+
+  // Reset state
+  state.running = false;
+  state.paused = false;
+  state.score = 0;
+  state.lives = 3;
+  state.wellPct = 0;
+  state.drops = [];
+  state.nextDropId = 0;
+  state.factIdx = 0;
+  state.lastSpawn = 0;
+  state.speed = 120;
+  state.spawnInterval = 1500;
+  state.catcherX = window.innerWidth / 2;
+  state.targetX = window.innerWidth / 2;
+  state.milestoneShown.clear();
+
+  // Clear old drops from DOM
+  document.querySelectorAll('.drop').forEach(d => d.remove());
+
+  updateHUD();
+  catcherEl.style.left = state.catcherX + 'px';
+  activateTapZones();
+
+  // Show first fact before starting
+  showFact(0, () => {
+    state.running = true;
+    state.lastTime = performance.now();
+    if (state.animId) cancelAnimationFrame(state.animId);
+    state.animId = requestAnimationFrame(gameLoop);
+  });
+}
+
+// ---- INPUT ----
+let keys = {};
+const tapZones = document.getElementById('tap-zones');
+const tapLeft = document.getElementById('tap-left');
+const tapRight = document.getElementById('tap-right');
+
+// Detect touch device and show tap zones
+const isTouchDevice = () => window.matchMedia('(max-width: 600px)').matches || navigator.maxTouchPoints > 0;
+
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if (e.key === ' ' && state.paused) resumeFromFact();
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+window.addEventListener('mousemove', e => {
+  if (state.running) state.targetX = e.clientX;
+});
+
+// Touch drag anywhere on screen (for tablet/larger touch)
+window.addEventListener('touchmove', e => {
+  if (state.running) state.targetX = e.touches[0].clientX;
+  e.preventDefault();
+}, { passive: false });
+
+// Tap zone hold logic — move catcher continuously while held
+let tapHeld = { left: false, right: false };
+const TAP_SPEED = 320; // px/sec, faster than keyboard for mobile feel
+
+function setupTapZone(el, dir) {
+  // Touch events (mobile)
+  el.addEventListener('touchstart', e => {
+    tapHeld[dir] = true;
+    el.classList.add('pressed');
+    e.preventDefault();
+  }, { passive: false });
+  el.addEventListener('touchend', e => {
+    tapHeld[dir] = false;
+    el.classList.remove('pressed');
+    e.preventDefault();
+  }, { passive: false });
+  el.addEventListener('touchcancel', () => {
+    tapHeld[dir] = false;
+    el.classList.remove('pressed');
+  });
+  // Mouse events (desktop preview)
+  el.addEventListener('mousedown', e => {
+    tapHeld[dir] = true;
+    el.classList.add('pressed');
+  });
+  el.addEventListener('mouseup', () => {
+    tapHeld[dir] = false;
+    el.classList.remove('pressed');
+  });
+  el.addEventListener('mouseleave', () => {
+    tapHeld[dir] = false;
+    el.classList.remove('pressed');
+  });
+}
+setupTapZone(tapLeft, 'left');
+setupTapZone(tapRight, 'right');
+
+function activateTapZones() {
+  tapZones.classList.add('active');
+}
+function deactivateTapZones() {
+  tapZones.classList.remove('active');
+  tapHeld.left = false;
+  tapHeld.right = false;
+}
+
+// Fact popup dismissal handled directly on the popup element below
+
+// ---- GAME LOOP ----
+function gameLoop(timestamp) {
+  if (!state.running) return;
+
+  const dt = Math.min((timestamp - state.lastTime) / 1000, 0.1); // seconds, capped
+  state.lastTime = timestamp;
+
+  // Move catcher
+  if (keys['ArrowLeft'] || tapHeld.left) state.targetX -= TAP_SPEED * dt;
+  if (keys['ArrowRight'] || tapHeld.right) state.targetX += TAP_SPEED * dt;
+  state.targetX = Math.max(35, Math.min(window.innerWidth - 35, state.targetX));
+  state.catcherX += (state.targetX - state.catcherX) * 0.25;
+  catcherEl.style.left = state.catcherX + 'px';
+
+  // Spawn drops
+  if (timestamp - state.lastSpawn > state.spawnInterval) {
+    spawnDrop();
+    state.lastSpawn = timestamp;
+    // Gradually speed up
+    state.speed = Math.min(300, state.speed + 1.5);
+    state.spawnInterval = Math.max(700, state.spawnInterval - 15);
+  }
+
+  // Move drops
+  const groundY = window.innerHeight - 72;
+  const catcherTop = window.innerHeight - 70;
+
+  state.drops.forEach(drop => {
+    drop.y += state.speed * dt;
+    drop.el.style.top = drop.y + 'px';
+
+    // Check catch
+    const dx = Math.abs(drop.x - state.catcherX);
+    const dy = Math.abs(drop.y - catcherTop);
+    if (dx < (CATCHER_WIDTH / 2 + DROP_RADIUS * 0.3) && dy < 30) {
+      catchDrop(drop);
+    } else if (drop.y > groundY + 30) {
+      missedDrop(drop);
+    }
+  });
+
+  state.animId = requestAnimationFrame(gameLoop);
+}
+
+// ---- SPAWN ----
+function spawnDrop() {
+  const isDirty = Math.random() < DIRTY_CHANCE;
+  const x = Math.random() * (window.innerWidth - 80) + 40;
+  const el = document.createElement('div');
+  el.className = 'drop' + (isDirty ? ' dirty' : '');
+  el.textContent = isDirty ? '🟤' : '💧';
+  el.style.left = x + 'px';
+  el.style.top = '-30px';
+  gameArea.appendChild(el);
+
+  const drop = { id: state.nextDropId++, x, y: -30, isDirty, el };
+  state.drops.push(drop);
+}
+
+// ---- CATCH ----
+function catchDrop(drop) {
+  removeDrop(drop);
+
+  if (drop.isDirty) {
+    // Hit
+    state.lives--;
+    flashHit();
+    updateHUD();
+    if (state.lives <= 0) {
+      endGame(false);
+      return;
+    }
+  } else {
+    // Clean catch!
+    state.score++;
+    state.wellPct = Math.min(100, Math.round((state.score / state.cleanNeeded) * 100));
+    splash(drop.x, window.innerHeight - 72, false);
+    updateHUD();
+
+    // Check milestones for facts
+    const nextFact = FACTS[state.factIdx];
+    if (nextFact && state.score >= nextFact.milestone && !state.milestoneShown.has(state.factIdx)) {
+      state.milestoneShown.add(state.factIdx);
+      pauseForFact(state.factIdx);
+      state.factIdx++;
+      return;
+    }
+
+    if (state.wellPct >= 100) {
+      endGame(true);
+    }
+  }
+}
+
+function missedDrop(drop) {
+  removeDrop(drop);
+  if (!drop.isDirty) {
+    // Missed clean drop — show ripple but no penalty
+    splash(drop.x, window.innerHeight - 72, true);
+  }
+}
+
+function removeDrop(drop) {
+  drop.el.remove();
+  state.drops = state.drops.filter(d => d.id !== drop.id);
+}
+
+// ---- EFFECTS ----
+function splash(x, y, missed) {
+  const el = document.createElement('div');
+  el.className = 'splash';
+  el.style.left = x + 'px';
+  el.style.top = (y - 10) + 'px';
+  el.textContent = missed ? '💦' : '✨';
+  gameArea.appendChild(el);
+  setTimeout(() => el.remove(), 700);
+}
+
+function flashHit() {
+  hitOverlay.classList.add('flash');
+  setTimeout(() => hitOverlay.classList.remove('flash'), 300);
+}
+
+function showMilestoneBanner(text) {
+  milestoneBanner.textContent = text;
+  milestoneBanner.classList.add('show');
+  setTimeout(() => milestoneBanner.classList.remove('show'), 2500);
+}
+
+// ---- HUD ----
+function updateHUD() {
+  scoreDisplay.textContent = state.score;
+  wellBar.style.width = state.wellPct + '%';
+  wellPctEl.textContent = state.wellPct;
+  const livesMap = ['', '💧', '💧💧', '💧💧💧'];
+  livesDisplay.textContent = livesMap[Math.max(0, state.lives)] || '';
+}
+
+// ---- FACT SYSTEM ----
+function pauseForFact(idx) {
+  state.running = false;
+  cancelAnimationFrame(state.animId);
+  showFact(idx, () => {
+    state.running = true;
+    state.lastTime = performance.now();
+    state.animId = requestAnimationFrame(gameLoop);
+  });
+}
+
+function showFact(idx, callback) {
+  const fact = FACTS[Math.min(idx, FACTS.length - 1)];
+  document.getElementById('fact-icon').textContent = fact.icon;
+  document.getElementById('fact-title').textContent = fact.title;
+  document.getElementById('fact-text').textContent = fact.text;
+  document.getElementById('fact-progress').textContent = `Well ${state.wellPct}% full`;
+
+  factPopup._cb = callback;
+  state.paused = true;
+  factPopup.classList.add('show');
+}
+
+function resumeFromFact() {
+  if (!factPopup.classList.contains('show')) return;
+  factPopup.classList.remove('show');
+  state.paused = false;
+  const cb = factPopup._cb;
+  factPopup._cb = null;
+  if (cb && typeof cb === 'function') {
+    cb();
+  } else {
+    state.running = true;
+    state.lastTime = performance.now();
+    state.animId = requestAnimationFrame(gameLoop);
+  }
+}
+
+factPopup.addEventListener('click', e => {
+  e.stopPropagation();
+  resumeFromFact();
+});
+
+// ---- END GAME ----
+function endGame(won) {
+  state.running = false;
+  if (state.animId) cancelAnimationFrame(state.animId);
+  state.drops.forEach(d => d.el.remove());
+  state.drops = [];
+  gameArea.classList.add('hidden');
+  hud.classList.add('hidden');
+  deactivateTapZones();
+  factPopup.classList.remove('show');
+
+  document.getElementById('end-icon').textContent = won ? '🎉' : '😔';
+  document.getElementById('end-title').textContent = won ? 'Well Filled!' : 'Game Over';
+  document.getElementById('end-sub').textContent = won
+    ? 'You helped fund clean water for a village!'
+    : 'The well isn\'t full yet — they need your help.';
+  document.getElementById('end-score').textContent =
+    `You caught ${state.score} clean drops${won ? ' — a full well! 💧' : '.'}`;
+
+  endScreen.classList.remove('hidden');
+}
+
+document.getElementById('replay-btn').addEventListener('click', startGame);
+</script>
+</body>
+</html>
