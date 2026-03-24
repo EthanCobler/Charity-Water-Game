@@ -577,6 +577,7 @@ const CATCHER_WIDTH = 70;
 const DROP_RADIUS = 16;
 const LIVES_ICONS = ['💧','💧💧','💧💧💧'];
 const collectSound = new Audio('waterdropsound.wav')
+const collectDirtySound = new Audio('dirtywaterpop.wav')
 const winSound = new Audio('cheer.wav')
 
 // ---- DOM ----
@@ -773,6 +774,7 @@ function catchDrop(drop) {
   if (drop.isDirty) {
     // Hit
     state.lives--;
+    collectDirtySound.play();
     flashHit();
     updateHUD();
     if (state.lives <= 0) {
@@ -784,6 +786,7 @@ function catchDrop(drop) {
     state.score++;
     state.wellPct = Math.min(100, Math.round((state.score / state.cleanNeeded) * 100));
     splash(drop.x, window.innerHeight - 72, false);
+    collectSound.currentTime = 0;
     collectSound.play();
     updateHUD();
 
