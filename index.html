@@ -908,6 +908,9 @@ function endGame(won) {
   document.getElementById('end-score').textContent =
     `You caught ${state.score} clean drops${won ? ' — a full well! 💧' : '.'}`;
 
+  if (won)
+    winSound.play();
+
   endScreen.classList.remove('hidden');
 }
 
